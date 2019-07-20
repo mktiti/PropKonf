@@ -1,7 +1,6 @@
-package hu.mktiti.kreator.property.structured.variable
+package hu.mktiti.propkonf.core.variable
 
-import structured.general.*
-import structured.variable.VarContextStack
+import hu.mktiti.propkonf.core.general.*
 import java.util.*
 
 fun main() {
@@ -18,7 +17,7 @@ fun main() {
     }
 }
 
-internal fun calculateExpression(expression: String): ValueExpression<*>? {
+internal fun calculateExpression(expression: String): ValueExpression? {
     return stringTraverser(expression).exprTokenize()?.eval(VarContextStack())
             ?: return null
 }
@@ -42,7 +41,7 @@ internal fun SourceStream.exprTokenize(): GeneralDependantToken? =
                     '+', '-' -> when {
                         peek().isDigit() -> {
                             back()
-                            IntExpression(parseInt())
+                            intExpr(parseInt())
                         }
                         next == '+' -> Plus
                         else -> Minus
@@ -78,23 +77,30 @@ internal fun SourceStream.exprTokenize(): GeneralDependantToken? =
                         failLex("Failed to parse operator")
                     }
 
-                    '?' -> OnTrue
+                    '.' -> OnTrue
                     ':' -> OnElse
 
                     '"' -> when (val stringRes = parseAnyString()) {
-                        is SimpleStringResult -> StringExpression(stringRes.value)
+                        is SimpleStringResult -> strExpr(stringRes.value)
                         is InterpolatedStringResult -> InterpolatedStringToken(stringRes::invoke)
                     }
 
                     else -> {
                         back()
                         if (next.isDigit()) {
-                            IntExpression(parseInt())
+                            intExpr(parseInt())
                         } else {
                             when (val name = parseName()) {
-                                "true" -> BooleanExpression(true)
-                                "false" -> BooleanExpression(false)
-                                else -> SingleVarToken(name)
+                                "true" -> ValueExpression(TrueVal)
+                                "false" -> ValueExpression(FalseVal)
+                                else -> {
+                                    skipWhitespace()
+                                    val optional = (safePeek() == '?')
+                                    if (optional) {
+                                        next()
+                                    }
+                                    SingleVarToken(name, optional)
+                                }
                             }
                         }
                     }

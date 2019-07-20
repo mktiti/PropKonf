@@ -1,7 +1,7 @@
-package structured.general
+package hu.mktiti.propkonf.core.general
 
-import hu.mktiti.kreator.property.structured.variable.exprTokenize
-import structured.variable.VarContextStack
+import hu.mktiti.propkonf.core.variable.VarContextStack
+import hu.mktiti.propkonf.core.variable.exprTokenize
 import java.util.*
 
 class LexingException(message: String) : RuntimeException(message)

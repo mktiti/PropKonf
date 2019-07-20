@@ -1,4 +1,4 @@
-package structured.general
+package hu.mktiti.propkonf.core.general
 
 import java.lang.Integer.max
 import java.nio.file.Path

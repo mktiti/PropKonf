@@ -1,12 +1,8 @@
-package hu.mktiti.kreator.property.structured.config
+package hu.mktiti.propkonf.core.config
 
-import hu.mktiti.kreator.property.structured.variable.*
-import structured.config.Block
-import structured.config.SimpleVal
-import structured.config.parse
-import structured.config.prettyPrint
-import structured.general.*
-import structured.variable.VarContextStack
+import hu.mktiti.propkonf.core.general.*
+import hu.mktiti.propkonf.core.variable.VarContextStack
+import hu.mktiti.propkonf.core.variable.exprTokenize
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -20,18 +16,12 @@ fun main() {
             val tokens = tokenize(Paths.get(path))
             println(tokens)
             if (tokens != null) {
-                parse(tokens).prettyPrint()
+                parse(tokens)?.prettyPrint()
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
-}
-
-internal fun ValueExpression<*>.valLiteral() = when (this) {
-    is IntExpression -> IntLiteral(value)
-    is StringExpression -> StringLiteral(value)
-    is BooleanExpression -> BoolLiteral(value)
 }
 
 // Token types
@@ -62,22 +52,22 @@ internal object Assign : Token() {
 }
 
 internal class VarExpression(
-        internal val code: (VarContextStack) -> VarLiteral<*>
+        private val producer: (VarContextStack) -> PropValue<*>
 ) : Token() {
+    operator fun invoke(varContext: VarContextStack) = producer(varContext)
+
     override fun toString() = "Expression"
 }
 
-internal sealed class VarLiteral<T>(internal val value: T) : Token() {
+internal class VarLiteral<T>(internal val value: PropValue<T>) : Token() {
     override fun toString() = "Val {$value}"
 }
 
-internal class StringLiteral(value: String) : VarLiteral<String>(value)
-internal class IntLiteral(value: Int) : VarLiteral<Int>(value)
-internal class BoolLiteral(value: Boolean) : VarLiteral<Boolean>(value)
+fun fullParse(path: Path, rootContext: VarContextStack? = null): Block? =
+        loadFile(path).tokenize()?.let { parse(it, rootContext) }
 
-fun fullParse(path: Path): Block? = loadFile(path).tokenize()?.let(::parse)
-
-fun fullParse(value: String): Block? = tokenize(value)?.let(::parse)
+fun fullParse(value: String, rootContext: VarContextStack? = null): Block? =
+        tokenize(value)?.let { parse(it, rootContext) }
 
 internal fun tokenize(path: Path): List<Token>? = loadFile(path).tokenize()
 
@@ -95,9 +85,9 @@ internal fun SourceStream.tokenize(): List<Token>? =
                     '}' -> BlockEnd
                     '=' -> Assign
                     '"' -> when (val stringRes = parseAnyString()) {
-                        is SimpleStringResult -> StringLiteral(stringRes.value)
+                        is SimpleStringResult -> VarLiteral(StringVal(stringRes.value))
                         is InterpolatedStringResult -> VarExpression { context ->
-                            StringLiteral(stringRes.producer(context))
+                            StringVal(stringRes.producer(context))
                         }
                     }
                     '$' -> {
@@ -105,7 +95,7 @@ internal fun SourceStream.tokenize(): List<Token>? =
                             next()
                             val expression = exprTokenize() ?: failLex("Invalid expression")
                             VarExpression { context ->
-                                expression.eval(context).valLiteral()
+                                expression.eval(context).value
                             }
                         } else {
                             VarDef(parseName())
@@ -114,11 +104,11 @@ internal fun SourceStream.tokenize(): List<Token>? =
                     else -> {
                         back()
                         if (next.isDigit() || next == '+' || next == '-') {
-                            IntLiteral(parseInt())
+                            VarLiteral(IntVal(parseInt()))
                         } else {
                             when (val name = parseName()) {
-                                "true" -> BoolLiteral(true)
-                                "false" -> BoolLiteral(false)
+                                "true" -> VarLiteral(TrueVal)
+                                "false" -> VarLiteral(FalseVal)
                                 else -> NameDef(name)
                             }
                         }
