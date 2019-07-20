@@ -18,7 +18,12 @@
 
     <modules>
         <module>core</module>
+        <module>tools</module>
     </modules>
+
+    <packaging>
+        pom
+    </packaging>
 
     <dependencyManagement>
         <dependencies>
@@ -29,9 +34,5 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
-    <packaging>
-        pom
-    </packaging>
 
 </project>
