@@ -1,7 +1,11 @@
 package hu.mktiti.propkonf.core.general
 
-import hu.mktiti.propkonf.core.variable.VarContextStack
+import hu.mktiti.propkonf.core.variable.*
+import hu.mktiti.propkonf.core.variable.GeneralDependantToken
+import hu.mktiti.propkonf.core.variable.InterpolatedStrDepToken
+import hu.mktiti.propkonf.core.variable.VarDependentToken
 import hu.mktiti.propkonf.core.variable.exprTokenize
+import hu.mktiti.propkonf.core.variable.strExpr
 import java.util.*
 
 class LexingException(message: String) : RuntimeException(message)
@@ -88,22 +92,46 @@ internal fun SourceStream.parseAnyString(): StringParseResult
         parseString()
     }
 
-internal sealed class StringParseResult {
-    abstract operator fun invoke(varContextStack: VarContextStack): String
-}
+internal class StringParseResult(val parts: List<Either<out String, out VarDependentToken>>) {
 
-internal class SimpleStringResult(internal val value: String) : StringParseResult() {
-    override operator fun invoke(varContextStack: VarContextStack) = value
-}
+    constructor(value: String) : this(listOf(Left(value)))
 
-internal class InterpolatedStringResult(val producer: (VarContextStack) -> String) : StringParseResult() {
-    override operator fun invoke(varContextStack: VarContextStack) = producer(varContextStack)
+    fun getIfConstant(): String? {
+        return when (parts.size) {
+            0 -> ""
+            1 -> {
+                val only = parts.first()
+                if (only is Left) only.value else null
+            }
+            else -> null
+        }
+    }
+
+    fun <SR, VR> onResult(
+            onConstant: (String) -> SR,
+            onVar: (InterpolatedStrDepToken) -> VR
+    ): Either<SR, VR> {
+        val constVal = getIfConstant()
+        return if (constVal == null) {
+            Right(onVar(InterpolatedStrDepToken(parts)))
+        } else {
+            Left(onConstant(constVal))
+        }
+    }
+
 }
 
 internal fun SourceStream.parseString(): StringParseResult {
     val builder = StringBuilder()
+    val producers = LinkedList<Either<out String, out VarDependentToken>>()
 
-    val producers = LinkedList<StringParseResult>()
+    fun builderToRes() {
+        val before = builder.toString()
+        builder.clear()
+        if (before.isNotEmpty()) {
+            producers += Left(before)
+        }
+    }
 
     loop@while (true) {
         when (val char = next()) {
@@ -126,28 +154,20 @@ internal fun SourceStream.parseString(): StringParseResult {
                     failLex("In interpolated string $ must be followed by {expression}, to write '$', use '\\$'")
                 }
 
-                producers += SimpleStringResult(builder.toString())
-                builder.clear()
+                builderToRes()
 
                 val expr = exprTokenize() ?: failLex("Failed to parse expression")
-                producers += InterpolatedStringResult { context ->
-                    expr.eval(context).value.toString()
-                }
+                producers += Right(expr)
             }
             else -> builder.append(char)
         }
     }
-    producers += SimpleStringResult(builder.toString())
-
-    return if (producers.size == 1) {
-        producers.first
-    } else {
-        InterpolatedStringResult { context ->
-            producers.joinToString(separator = "") { prod ->
-                prod.invoke(context)
-            }
-        }
+    builderToRes()
+    if (producers.isEmpty()) {
+        producers += Left("")
     }
+
+    return StringParseResult(producers)
 }
 
 internal fun <T> BackingTraverser<T>.nTimes(field: T, count: Int = 3): Boolean =
@@ -167,12 +187,12 @@ internal fun <T> BackingTraverser<T>.nTimes(field: T, count: Int = 3): Boolean =
         false
     }
 
-internal fun SourceStream.parseRawString(): SimpleStringResult {
+internal fun SourceStream.parseRawString(): StringParseResult {
     val builder = StringBuilder()
 
     while (!nTimes('"')) {
         builder.append(next())
     }
 
-    return SimpleStringResult(builder.toString())
+    return StringParseResult(builder.toString())
 }

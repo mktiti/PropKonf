@@ -80,10 +80,7 @@ internal fun SourceStream.exprTokenize(): GeneralDependantToken? =
                     '.' -> OnTrue
                     ':' -> OnElse
 
-                    '"' -> when (val stringRes = parseAnyString()) {
-                        is SimpleStringResult -> strExpr(stringRes.value)
-                        is InterpolatedStringResult -> InterpolatedStringToken(stringRes::invoke)
-                    }
+                    '"' -> parseAnyString().onResult(::strExpr) { it }.value()
 
                     else -> {
                         back()

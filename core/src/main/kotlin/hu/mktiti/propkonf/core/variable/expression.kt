@@ -1,7 +1,6 @@
 package hu.mktiti.propkonf.core.variable
 
 import hu.mktiti.propkonf.core.general.*
-import java.lang.RuntimeException
 import java.util.*
 import kotlin.math.max
 
@@ -28,9 +27,16 @@ internal fun ValueExpression.toBool(): Boolean = when (val prop = value) {
 
 class ExpressionEvalException(message: String) : RuntimeException(message)
 
+data class ExpressionDependencies(
+        val required: Set<String> = emptySet(),
+        val optional: Set<String> = emptySet()
+)
+
 internal sealed class ExpressionToken
 
 internal sealed class VarDependentToken : ExpressionToken() {
+    abstract fun neededVars(): ExpressionDependencies
+
     abstract fun eval(varContext: VarContextStack): ValueExpression
 }
 
@@ -38,12 +44,51 @@ internal class SingleVarToken(
         private val name: String,
         private val optional: Boolean
 ) : VarDependentToken() {
+    override fun neededVars()
+        = if (optional) {
+            ExpressionDependencies(optional = setOf(name))
+        } else {
+            ExpressionDependencies(required = setOf(name))
+        }
+
     override fun eval(varContext: VarContextStack): ValueExpression = ValueExpression(
             varContext[name] ?: if (optional) StringVal("") else throw ExpressionEvalException("Variable '$name' not set")
     )
 }
 
+internal class InterpolatedStrDepToken(private val parts: List<Either<out String, out VarDependentToken>>) : VarDependentToken() {
+    override fun neededVars(): ExpressionDependencies
+            = parts.filterIsInstance<Right<String, VarDependentToken>>()
+            .fold(ExpressionDependencies()) { depAcc, expr ->
+                val exprDep = expr.value.neededVars()
+                ExpressionDependencies(
+                        required = depAcc.required + exprDep.required,
+                        optional = depAcc.optional + exprDep.optional
+                )
+            }
+
+    override fun eval(varContext: VarContextStack): ValueExpression {
+        val strValue = parts.map {
+            when (it) {
+                is Left -> it.value
+                is Right -> it.value.eval(varContext).value.toString()
+            }
+        }.joinToString("")
+        return strExpr(strValue)
+    }
+}
+
 internal class GeneralDependantToken(private val expressions: List<ExpressionToken>) : VarDependentToken() {
+    override fun neededVars(): ExpressionDependencies
+        = expressions.filterIsInstance<VarDependentToken>()
+            .fold(ExpressionDependencies()) { depAcc, expr ->
+                val exprDep = expr.neededVars()
+                ExpressionDependencies(
+                        required = depAcc.required + exprDep.required,
+                        optional = depAcc.optional + exprDep.optional
+                )
+            }
+
     override fun eval(varContext: VarContextStack): ValueExpression {
         val parts = expressions.map {
             when (it) {
@@ -53,12 +98,6 @@ internal class GeneralDependantToken(private val expressions: List<ExpressionTok
         }
         return collectionTraverser(parts).parseScope()
     }
-}
-
-internal class InterpolatedStringToken(
-        private val producer: (VarContextStack) -> String
-) : VarDependentToken() {
-    override fun eval(varContext: VarContextStack) = ValueExpression(StringVal(producer(varContext)))
 }
 
 internal sealed class ConcreteToken : ExpressionToken()

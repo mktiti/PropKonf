@@ -1,33 +1,15 @@
 package hu.mktiti.propkonf.core.config
 
-import hu.mktiti.propkonf.core.general.BackingTraverser
-import hu.mktiti.propkonf.core.general.PropValue
+import hu.mktiti.propkonf.core.general.*
 import hu.mktiti.propkonf.core.variable.ExpressionEvalException
-import hu.mktiti.propkonf.core.variable.VarContextStack
-import java.lang.RuntimeException
+import hu.mktiti.propkonf.core.variable.VarDependentToken
 import java.util.*
-
-sealed class Property(val name: String) {
-    open operator fun get(parts: List<String>): PropValue<*>? = null
-}
-
-class SimpleProperty<P : PropValue<*>>(name: String, internal val value: P) : Property(name) {
-    override fun toString() = "$name = ${propertyEscaped(value)}"
-}
-
-class Block(name: String, val variables: List<Property>) : Property(name) {
-    override operator fun get(parts: List<String>) = if (parts.isEmpty()) {
-        null
-    } else {
-        variables.find { it.name == parts.first() }?.get(parts.drop(1))
-    }
-}
 
 class ParseException(message: String) : RuntimeException(message)
 
 fun failParse(message: String): Nothing = throw ParseException(message)
 
-internal fun parse(tokens: List<Token>, rootContext: VarContextStack? = null): Block? = try {
+internal fun parse(tokens: List<Token>, rootContext: DependentVarContextStack? = null): DependentBlock? = try {
     BackingTraverser(tokens).parseBlock("", rootContext)
 } catch (evalE: ExpressionEvalException) {
     System.err.println("Failed to parse block: failed to evaluate expression")
@@ -39,9 +21,9 @@ internal fun parse(tokens: List<Token>, rootContext: VarContextStack? = null): B
     null
 }
 
-internal fun BackingTraverser<Token>.parseBlock(name: String, parentContext: VarContextStack?): Block {
-    val vars: MutableList<Property> = LinkedList()
-    val varContext = VarContextStack(parentContext)
+internal fun BackingTraverser<Token>.parseBlock(name: String, parentContext: DependentVarContextStack?): DependentBlock {
+    val vars: MutableList<DependentProperty> = LinkedList()
+    val varContext = DependentVarContextStack(parentContext)
 
     var wasCommented = false
     loop@while (hasNext()) {
@@ -62,11 +44,12 @@ internal fun BackingTraverser<Token>.parseBlock(name: String, parentContext: Var
             }
             is VarDef -> {
                 if (next() is Assign) {
-                    varContext[token.name] = when (val exprValue = next()) {
-                        is VarExpression -> exprValue(varContext)
-                        is VarLiteral<*> -> exprValue.value
+                    val varValue: Either<PropValue<*>, VarDependentToken> = when (val exprValue = next()) {
+                        is VarLiteral<*> -> Left(exprValue.value)
+                        is VarExpression -> Right(exprValue.producer)
                         else -> failParse("Var definition for '${token.name}' not followed by expression assignment")
                     }
+                    varContext[token.name] = varValue
                 } else {
                     failParse("Var definition for '${token.name}' not followed by expression assignment")
                 }
@@ -77,20 +60,20 @@ internal fun BackingTraverser<Token>.parseBlock(name: String, parentContext: Var
         }
     }
 
-    return Block(name, vars)
+    return DependentBlock(name, vars, varContext)
 }
 
-internal fun BackingTraverser<Token>.parseVar(name: String, varContextStack: VarContextStack): Property {
+internal fun BackingTraverser<Token>.parseVar(name: String, varContextStack: DependentVarContextStack): DependentProperty {
     fun next(): Token = safeNext() ?: failParse("Name def '$name' has not value assigned")
 
     return when (val token = next()) {
         is Assign -> {
-            val value = when (val varToken = next()) {
-                is VarLiteral<*> -> varToken.value
-                is VarExpression -> varToken(varContextStack)
+            val value: Either<PropValue<*>, VarDependentToken> = when (val varToken = next()) {
+                is VarLiteral<*> -> Left(varToken.value)
+                is VarExpression -> Right(varToken.producer)
                 else -> failParse("Name def '$name' has bad value assigned")
             }
-            SimpleProperty(name, value)
+            SimpleDependentProperty(name, value)
         }
         is BlockStart -> {
             parseBlock(name, varContextStack)

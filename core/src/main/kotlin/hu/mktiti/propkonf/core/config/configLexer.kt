@@ -1,8 +1,10 @@
 package hu.mktiti.propkonf.core.config
 
 import hu.mktiti.propkonf.core.general.*
-import hu.mktiti.propkonf.core.variable.VarContextStack
+import hu.mktiti.propkonf.core.variable.*
+import hu.mktiti.propkonf.core.variable.VarDependentToken
 import hu.mktiti.propkonf.core.variable.exprTokenize
+import hu.mktiti.propkonf.core.variable.strExpr
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -11,12 +13,28 @@ fun main() {
     while (true) {
         try {
             print(">")
-            val path = readLine()
-            if (path == null || path.isBlank()) break
+            val command = readLine()?.split(" ") ?: return
+
+            val path = command[0]
+            val vars = command.drop(1).map {
+                val split = it.split("=")
+                split[0] to split.drop(1).joinToString("")
+            }
+            val rootContext = MutableVarContextStack().apply {
+                vars.forEach { (key, value) -> set(key, StringVal(value)) }
+            }
+
+            if (path.isBlank()) break
             val tokens = tokenize(Paths.get(path))
             println(tokens)
             if (tokens != null) {
-                parse(tokens)?.prettyPrint()
+                val dependentBlock = parse(tokens)
+                if (dependentBlock == null) {
+                    System.err.println("Failed to parse dependent block")
+                } else {
+                    println("Evaluation requires: ${dependentBlock.neededVars()}")
+                    dependentBlock.evaluate(rootContext).prettyPrint()
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -52,9 +70,9 @@ internal object Assign : Token() {
 }
 
 internal class VarExpression(
-        private val producer: (VarContextStack) -> PropValue<*>
+        internal val producer: VarDependentToken
 ) : Token() {
-    operator fun invoke(varContext: VarContextStack) = producer(varContext)
+    operator fun invoke(varContext: VarContextStack) = producer.eval(varContext)
 
     override fun toString() = "Expression"
 }
@@ -64,10 +82,10 @@ internal class VarLiteral<T>(internal val value: PropValue<T>) : Token() {
 }
 
 fun fullParse(path: Path, rootContext: VarContextStack? = null): Block? =
-        loadFile(path).tokenize()?.let { parse(it, rootContext) }
+        loadFile(path).tokenize()?.let { parse(it) }?.evaluate(VarContextStack(rootContext))
 
 fun fullParse(value: String, rootContext: VarContextStack? = null): Block? =
-        tokenize(value)?.let { parse(it, rootContext) }
+        tokenize(value)?.let { parse(it) }?.evaluate(VarContextStack(rootContext))
 
 internal fun tokenize(path: Path): List<Token>? = loadFile(path).tokenize()
 
@@ -84,19 +102,14 @@ internal fun SourceStream.tokenize(): List<Token>? =
                     '{' -> BlockStart
                     '}' -> BlockEnd
                     '=' -> Assign
-                    '"' -> when (val stringRes = parseAnyString()) {
-                        is SimpleStringResult -> VarLiteral(StringVal(stringRes.value))
-                        is InterpolatedStringResult -> VarExpression { context ->
-                            StringVal(stringRes.producer(context))
-                        }
-                    }
+                    '"' -> parseAnyString().onResult(
+                            onConstant = { VarLiteral(StringVal(it)) },
+                            onVar = { VarExpression(it) }
+                    ).value()
                     '$' -> {
                         if (peek() == '{') {
                             next()
-                            val expression = exprTokenize() ?: failLex("Invalid expression")
-                            VarExpression { context ->
-                                expression.eval(context).value
-                            }
+                            VarExpression(exprTokenize() ?: failLex("Invalid expression"))
                         } else {
                             VarDef(parseName())
                         }
