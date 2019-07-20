@@ -1,18 +1,6 @@
 package hu.mktiti.propkonf.core.general
 
 import java.lang.Integer.max
-import java.nio.file.Path
-
-fun loadFile(path: Path): SourceStream {
-    val data = path.toFile().readLines()
-            .map { it.trimStart() }
-            .filterNot { it.startsWith("//") }
-
-    val size = max(data.foldRight(-1) { s, acc -> s.length + 1 + acc }, 0)
-    val builder = data.joinTo(StringBuilder(size), separator = "\n")
-
-    return stringTraverser(builder.toString())
-}
 
 interface TraverserStore<T> {
 
@@ -61,11 +49,13 @@ class BackingTraverser<T>(private val store: TraverserStore<T>) {
 
     fun safeNext(): T? = if (hasNext()) store[index++] else null
 
-    fun next(): T = safeNext() ?: throw IllegalStateException("Traverser is finished")
+    // Prevent auto boxing
+    fun next(): T = if (hasNext()) store[index++] else throw IllegalStateException("Traverser is finished")
 
     fun safePeek(): T? = if (hasNext()) store[index] else null
 
-    fun peek(): T = safePeek() ?: throw IllegalStateException("Traverser is finished")
+    // Prevent auto boxing
+    fun peek(): T = if (hasNext()) store[index] else throw IllegalStateException("Traverser is finished")
 
     fun back() {
         index = max(0, index - 1)

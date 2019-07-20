@@ -46,7 +46,7 @@ internal fun BackingTraverser<Token>.parseBlock(name: String, parentContext: Var
     var wasCommented = false
     loop@while (hasNext()) {
         when (val token = next()) {
-            is BlockComment -> {
+            is ValueComment -> {
                 wasCommented = true
             }
             is NameDef -> {

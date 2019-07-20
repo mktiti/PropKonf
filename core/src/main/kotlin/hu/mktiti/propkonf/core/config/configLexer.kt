@@ -35,7 +35,7 @@ internal class NameDef(internal val name: String) : Token() {
     override fun toString() = "Def {$name}"
 }
 
-internal object BlockComment : Token() {
+internal object ValueComment : Token() {
     override fun toString() = "Block Comment"
 }
 
@@ -79,8 +79,8 @@ internal fun SourceStream.tokenize(): List<Token>? =
 
             skipWhitespace()
             while (hasNext()) {
-                list += when (val next = next()) {
-                    '#' -> BlockComment
+                val parsed: Token? = when (val next = next()) {
+                    '#' -> ValueComment
                     '{' -> BlockStart
                     '}' -> BlockEnd
                     '=' -> Assign
@@ -101,6 +101,27 @@ internal fun SourceStream.tokenize(): List<Token>? =
                             VarDef(parseName())
                         }
                     }
+                    '/' -> {
+                        when (safeNext()) {
+                            '/' -> {
+                                while (hasNext() && next() != '\n') {}
+                            }
+                            '*' -> {
+                                block@while (hasNext()) {
+                                    while (hasNext() && next() != '*') {}
+                                    when (safePeek()) {
+                                        '/' -> {
+                                            next()
+                                            break@block
+                                        }
+                                        null -> throw LexingException("Block comment ('/*') not closed ('*/' missing)")
+                                    }
+                                }
+                            }
+                            else -> throw LexingException("Unexpected '/' character ('//', '/*' are valid commenting)")
+                        }
+                        null
+                    }
                     else -> {
                         back()
                         if (next.isDigit() || next == '+' || next == '-') {
@@ -113,6 +134,10 @@ internal fun SourceStream.tokenize(): List<Token>? =
                             }
                         }
                     }
+                }
+
+                if (parsed != null) {
+                    list += parsed
                 }
 
                 skipWhitespace()
