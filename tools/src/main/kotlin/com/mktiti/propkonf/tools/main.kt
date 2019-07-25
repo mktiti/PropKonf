@@ -40,7 +40,7 @@ class Arguments(parser: ArgParser) {
 
     val passEnvVars by parser.flagging("-e", "--pass-environment", help = "Pass the environment variables as root variables").default(false)
 
-    val transformEnvVars by parser.flagging("-t", "--transform-environment", help = "Transform the passed environment variables to snake-case (MY_VAR -> my-var)")
+    val transformEnvVars by parser.flagging("-t", "--transform-environment", help = "Transform the passed environment variables to kebab-case (MY_VAR -> my-var)")
 
     val rootVars by parser.storing("-r", "--root-vars",
             help = "Comma separated list of extra root variables, quotes around string values are not needed. e.g. foo=5,bar=value,baz=true") {
@@ -56,7 +56,7 @@ class Arguments(parser: ArgParser) {
 
 }
 
-private fun toSnakeCase(name: String) =
+private fun toKebabCase(name: String) =
     String(name.map { char ->
         if (char == '_') '-' else char.toLowerCase()
     }.toCharArray())
@@ -71,7 +71,7 @@ fun main(args: Array<String>) = mainBody {
         val envVars = MutableVarContextStack().apply {
             if (passEnvVars) {
                 System.getenv().forEach { (name, value) ->
-                    val newName = if (transformEnvVars) toSnakeCase(name) else name
+                    val newName = if (transformEnvVars) toKebabCase(name) else name
                     this[newName] = StringVal(value)
                 }
             }
