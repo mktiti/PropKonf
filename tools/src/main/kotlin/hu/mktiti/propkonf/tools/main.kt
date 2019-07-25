@@ -11,7 +11,7 @@ import hu.mktiti.propkonf.core.config.fullParse
 import hu.mktiti.propkonf.core.config.linePrintRoot
 import hu.mktiti.propkonf.core.config.prettyPrintRoot
 import hu.mktiti.propkonf.core.general.StringVal
-import hu.mktiti.propkonf.core.variable.VarContextStack
+import hu.mktiti.propkonf.core.variable.MutableVarContextStack
 import hu.mktiti.propkonf.tools.generated.ProjectInfo
 import java.io.FileOutputStream
 import java.io.PrintStream
@@ -68,7 +68,7 @@ fun main(args: Array<String>) = mainBody {
             return@mainBody
         }
 
-        val envVars = VarContextStack().apply {
+        val envVars = MutableVarContextStack().apply {
             if (passEnvVars) {
                 System.getenv().forEach { (name, value) ->
                     val newName = if (transformEnvVars) toSnakeCase(name) else name
@@ -77,7 +77,7 @@ fun main(args: Array<String>) = mainBody {
             }
         }
 
-        val customVars = VarContextStack(envVars).apply {
+        val customVars = MutableVarContextStack(envVars).apply {
             rootVars.forEach { (name, value) ->
                 this[name] = StringVal(value)
             }
