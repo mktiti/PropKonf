@@ -1,6 +1,6 @@
-package hu.mktiti.propkonf.core.variable
+package com.mktiti.propkonf.core.variable
 
-import hu.mktiti.propkonf.core.general.*
+import com.mktiti.propkonf.core.general.*
 import java.util.*
 import kotlin.math.max
 
@@ -46,13 +46,14 @@ internal class SingleVarToken(
 ) : VarDependentToken() {
     override fun neededVars()
         = if (optional) {
-            ExpressionDependencies(optional = setOf(name))
+        ExpressionDependencies(optional = setOf(name))
         } else {
-            ExpressionDependencies(required = setOf(name))
+        ExpressionDependencies(required = setOf(name))
         }
 
     override fun eval(varContext: VarContextStack): ValueExpression = ValueExpression(
-            varContext[name] ?: if (optional) StringVal("") else throw ExpressionEvalException("Variable '$name' not set")
+            varContext[name]
+                    ?: if (optional) StringVal("") else throw ExpressionEvalException("Variable '$name' not set")
     )
 }
 
@@ -185,7 +186,7 @@ internal tailrec fun maxPriority(list: ExpressionList, max: Int = 0): Int
         = if (list.node == null) {
             max
         } else {
-            maxPriority(list.node.next, max(list.node.operator.priority, max))
+    maxPriority(list.node.next, max(list.node.operator.priority, max))
         }
 
 internal class ExpressionList(

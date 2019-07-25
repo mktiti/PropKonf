@@ -1,6 +1,6 @@
-package hu.mktiti.propkonf.core.config
+package com.mktiti.propkonf.core.config
 
-import hu.mktiti.propkonf.core.general.*
+import com.mktiti.propkonf.core.general.*
 import java.io.PrintStream
 
 private fun printIdent(ident: Int, target: PrintStream, identString: String) {

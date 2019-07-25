@@ -1,11 +1,8 @@
-package hu.mktiti.propkonf.core.general
+package com.mktiti.propkonf.core.general
 
-import hu.mktiti.propkonf.core.variable.*
-import hu.mktiti.propkonf.core.variable.GeneralDependantToken
-import hu.mktiti.propkonf.core.variable.InterpolatedStrDepToken
-import hu.mktiti.propkonf.core.variable.VarDependentToken
-import hu.mktiti.propkonf.core.variable.exprTokenize
-import hu.mktiti.propkonf.core.variable.strExpr
+import com.mktiti.propkonf.core.variable.InterpolatedStrDepToken
+import com.mktiti.propkonf.core.variable.VarDependentToken
+import com.mktiti.propkonf.core.variable.exprTokenize
 import java.util.*
 
 class LexingException(message: String) : RuntimeException(message)

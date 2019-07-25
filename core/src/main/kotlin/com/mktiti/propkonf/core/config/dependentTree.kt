@@ -1,12 +1,12 @@
-package hu.mktiti.propkonf.core.config
+package com.mktiti.propkonf.core.config
 
-import hu.mktiti.propkonf.core.general.Either
-import hu.mktiti.propkonf.core.general.Left
-import hu.mktiti.propkonf.core.general.PropValue
-import hu.mktiti.propkonf.core.general.Right
-import hu.mktiti.propkonf.core.variable.MutableVarContextStack
-import hu.mktiti.propkonf.core.variable.VarContextStack
-import hu.mktiti.propkonf.core.variable.VarDependentToken
+import com.mktiti.propkonf.core.general.Either
+import com.mktiti.propkonf.core.general.Left
+import com.mktiti.propkonf.core.general.PropValue
+import com.mktiti.propkonf.core.general.Right
+import com.mktiti.propkonf.core.variable.MutableVarContextStack
+import com.mktiti.propkonf.core.variable.VarContextStack
+import com.mktiti.propkonf.core.variable.VarDependentToken
 import java.util.*
 
 sealed class DependentProperty(val name: String) {
@@ -56,8 +56,8 @@ class DependentBlock(
     override fun evaluate(evaluatedParentContext: VarContextStack): Block {
         val evaluatedContext = varContext.evaluateLevel(evaluatedParentContext)
         return Block(
-            name,
-            variables.map { it.evaluate(evaluatedContext) }
+                name,
+                variables.map { it.evaluate(evaluatedContext) }
         )
     }
 }

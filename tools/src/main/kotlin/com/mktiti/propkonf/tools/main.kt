@@ -1,17 +1,17 @@
 @file:JvmName("MainKt")
 
-package hu.mktiti.propkonf.tools
+package com.mktiti.propkonf.tools
 
+import com.mktiti.propkonf.core.config.flatPrintRoot
+import com.mktiti.propkonf.core.config.fullParse
+import com.mktiti.propkonf.core.config.linePrintRoot
+import com.mktiti.propkonf.core.config.prettyPrintRoot
+import com.mktiti.propkonf.core.general.StringVal
+import com.mktiti.propkonf.core.variable.MutableVarContextStack
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.SystemExitException
 import com.xenomachina.argparser.default
 import com.xenomachina.argparser.mainBody
-import hu.mktiti.propkonf.core.config.flatPrintRoot
-import hu.mktiti.propkonf.core.config.fullParse
-import hu.mktiti.propkonf.core.config.linePrintRoot
-import hu.mktiti.propkonf.core.config.prettyPrintRoot
-import hu.mktiti.propkonf.core.general.StringVal
-import hu.mktiti.propkonf.core.variable.MutableVarContextStack
 import hu.mktiti.propkonf.tools.generated.ProjectInfo
 import java.io.FileOutputStream
 import java.io.PrintStream

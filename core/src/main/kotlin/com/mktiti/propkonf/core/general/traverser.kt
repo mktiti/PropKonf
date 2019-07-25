@@ -1,4 +1,4 @@
-package hu.mktiti.propkonf.core.general
+package com.mktiti.propkonf.core.general
 
 import java.lang.Integer.max
 

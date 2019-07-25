@@ -1,6 +1,6 @@
-package hu.mktiti.propkonf.core.variable
+package com.mktiti.propkonf.core.variable
 
-import hu.mktiti.propkonf.core.general.*
+import com.mktiti.propkonf.core.general.*
 import java.util.*
 
 fun main() {

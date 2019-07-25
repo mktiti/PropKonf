@@ -5,12 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>hu.mktiti</groupId>
+        <groupId>com.mktiti.propkonf</groupId>
         <artifactId>propkonf</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>propkonf-core</artifactId>
+    <artifactId>core</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <dependencies>

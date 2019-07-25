@@ -1,10 +1,10 @@
-package hu.mktiti.propkonf.core.config
+package com.mktiti.propkonf.core.config
 
-import hu.mktiti.propkonf.core.general.*
-import hu.mktiti.propkonf.core.variable.*
-import hu.mktiti.propkonf.core.variable.VarDependentToken
-import hu.mktiti.propkonf.core.variable.exprTokenize
-import hu.mktiti.propkonf.core.variable.strExpr
+import com.mktiti.propkonf.core.general.*
+import com.mktiti.propkonf.core.variable.MutableVarContextStack
+import com.mktiti.propkonf.core.variable.VarContextStack
+import com.mktiti.propkonf.core.variable.VarDependentToken
+import com.mktiti.propkonf.core.variable.exprTokenize
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -109,7 +109,8 @@ internal fun SourceStream.tokenize(): List<Token>? =
                     '$' -> {
                         if (peek() == '{') {
                             next()
-                            VarExpression(exprTokenize() ?: failLex("Invalid expression"))
+                            VarExpression(exprTokenize()
+                                    ?: failLex("Invalid expression"))
                         } else {
                             VarDef(parseName())
                         }

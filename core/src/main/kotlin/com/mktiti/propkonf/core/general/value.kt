@@ -1,4 +1,4 @@
-package hu.mktiti.propkonf.core.general
+package com.mktiti.propkonf.core.general
 
 sealed class PropValue<T>(internal val value: T) {
     override fun toString() = value.toString()

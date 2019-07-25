@@ -1,6 +1,6 @@
-package hu.mktiti.propkonf.core.config
+package com.mktiti.propkonf.core.config
 
-import hu.mktiti.propkonf.core.general.PropValue
+import com.mktiti.propkonf.core.general.PropValue
 
 sealed class Property(val name: String) {
     open operator fun get(parts: List<String>): PropValue<*>? = null

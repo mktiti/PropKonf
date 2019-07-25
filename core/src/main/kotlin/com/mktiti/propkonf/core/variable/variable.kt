@@ -1,6 +1,6 @@
-package hu.mktiti.propkonf.core.variable
+package com.mktiti.propkonf.core.variable
 
-import hu.mktiti.propkonf.core.general.PropValue
+import com.mktiti.propkonf.core.general.PropValue
 
 open class VarContextStack(
         private val parent: VarContextStack? = null

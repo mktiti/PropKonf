@@ -1,8 +1,8 @@
-package hu.mktiti.propkonf.core.config
+package com.mktiti.propkonf.core.config
 
-import hu.mktiti.propkonf.core.general.*
-import hu.mktiti.propkonf.core.variable.ExpressionEvalException
-import hu.mktiti.propkonf.core.variable.VarDependentToken
+import com.mktiti.propkonf.core.general.*
+import com.mktiti.propkonf.core.variable.ExpressionEvalException
+import com.mktiti.propkonf.core.variable.VarDependentToken
 import java.util.*
 
 class ParseException(message: String) : RuntimeException(message)
