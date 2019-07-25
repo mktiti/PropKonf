@@ -167,7 +167,7 @@ internal fun SourceStream.parseString(): StringParseResult {
     return StringParseResult(producers)
 }
 
-internal fun <T> BackingTraverser<T>.nTimes(field: T, count: Int = 3): Boolean =
+internal fun <T> BackingIterator<T>.nTimes(field: T, count: Int = 3): Boolean =
     if (count == 0) {
         true
     } else if (!hasNext()) {

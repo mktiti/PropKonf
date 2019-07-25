@@ -69,12 +69,12 @@ internal class InterpolatedStrDepToken(private val parts: List<Either<out String
             }
 
     override fun eval(varContext: VarContextStack): ValueExpression {
-        val strValue = parts.map {
+        val strValue = parts.joinToString("") {
             when (it) {
                 is Left -> it.value
                 is Right -> it.value.eval(varContext).value.toString()
             }
-        }.joinToString("")
+        }
         return strExpr(strValue)
     }
 }
@@ -186,7 +186,7 @@ internal tailrec fun maxPriority(list: ExpressionList, max: Int = 0): Int
         = if (list.node == null) {
             max
         } else {
-    maxPriority(list.node.next, max(list.node.operator.priority, max))
+            maxPriority(list.node.next, max(list.node.operator.priority, max))
         }
 
 internal class ExpressionList(
@@ -217,7 +217,7 @@ internal class ExpressionList(
 
 }
 
-internal fun BackingTraverser<ConcreteToken>.parseScope(): ValueExpression {
+internal fun BackingIterator<ConcreteToken>.parseScope(): ValueExpression {
     val levelValues = LinkedList<ValueExpression>()
     val levelOps = LinkedList<OperatorExpr>()
 

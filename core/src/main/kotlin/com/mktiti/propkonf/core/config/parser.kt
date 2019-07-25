@@ -10,7 +10,7 @@ class ParseException(message: String) : RuntimeException(message)
 fun failParse(message: String): Nothing = throw ParseException(message)
 
 internal fun parse(tokens: List<Token>, rootContext: DependentVarContextStack? = null): DependentBlock? = try {
-    BackingTraverser(tokens).parseBlock("", rootContext)
+    BackingIterator(tokens).parseBlock("", rootContext)
 } catch (evalE: ExpressionEvalException) {
     System.err.println("Failed to parse block: failed to evaluate expression")
     System.err.println(evalE.message)
@@ -21,7 +21,7 @@ internal fun parse(tokens: List<Token>, rootContext: DependentVarContextStack? =
     null
 }
 
-internal fun BackingTraverser<Token>.parseBlock(name: String, parentContext: DependentVarContextStack?): DependentBlock {
+internal fun BackingIterator<Token>.parseBlock(name: String, parentContext: DependentVarContextStack?): DependentBlock {
     val vars: MutableList<DependentProperty> = LinkedList()
     val varContext = DependentVarContextStack(parentContext)
 
@@ -63,7 +63,7 @@ internal fun BackingTraverser<Token>.parseBlock(name: String, parentContext: Dep
     return DependentBlock(name, vars, varContext)
 }
 
-internal fun BackingTraverser<Token>.parseVar(name: String, varContextStack: DependentVarContextStack): DependentProperty {
+internal fun BackingIterator<Token>.parseVar(name: String, varContextStack: DependentVarContextStack): DependentProperty {
     fun next(): Token = safeNext() ?: failParse("Name def '$name' has not value assigned")
 
     return when (val token = next()) {

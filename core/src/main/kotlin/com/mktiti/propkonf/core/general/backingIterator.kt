@@ -11,7 +11,7 @@ interface TraverserStore<T> {
 }
 
 fun <T> collectionTraverser(collection: Collection<T>)
-        = BackingTraverser(collectionToStore(collection))
+        = BackingIterator(collectionToStore(collection))
 
 fun <T> collectionToStore(collection: Collection<T>) = object : TraverserStore<T> {
 
@@ -34,11 +34,11 @@ private fun charArrayToStore(array: CharArray) = object : TraverserStore<Char> {
 }
 
 fun stringTraverser(array: String): SourceStream
-        = BackingTraverser(charArrayToStore(array.toCharArray()))
+        = BackingIterator(charArrayToStore(array.toCharArray()))
 
-typealias SourceStream = BackingTraverser<Char>
+typealias SourceStream = BackingIterator<Char>
 
-class BackingTraverser<T>(private val store: TraverserStore<T>) {
+class BackingIterator<T>(private val store: TraverserStore<T>) {
 
     private var index = 0
 
