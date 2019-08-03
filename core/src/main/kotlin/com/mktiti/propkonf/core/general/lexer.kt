@@ -46,41 +46,72 @@ internal fun SourceStream.parseName(): String {
 }
 
 internal fun SourceStream.parseInt(): Int {
-    var first = true
-    var positive = true
-    var hadDigit = false
+    val positive = when {
+        jumpIfEq("+") -> true
+        jumpIfEq("-") -> false
+        else -> true
+    }
 
-    var value = 0
+    val radix = when {
+        jumpIfEq("0b") -> 2
+        jumpIfEq("0o") -> 8
+        jumpIfEq("0x") -> 16
+        else -> 10
+    }
+
+    var hadDigit = false
+    var sumValue = 0
+
+    fun parseDigit(char: Char, radix: Int): Int? {
+        val value = when (char.toUpperCase()) {
+            in '0'..'9' -> char - '0'
+            in 'A'..'F' -> char - 'A' + 10
+            else -> return null
+        }
+
+        if (value >= radix) {
+            failLex("Literal with radix $radix cannot contain character '$char'")
+        }
+
+        return value
+    }
+
+    fun checkNotOnlyZero() {
+        if (hadDigit && sumValue == 0) {
+            failLex("Integer literal can only start with 0, if it's a radix prefix - 0b (binary), 0o (octal), 0x (hexadecimal)")
+        }
+    }
 
     loop@while (hasNext()) {
-        val digit = next()
+        val char = next()
+
         when {
-            digit == '+' || digit == '-' -> {
-                if (first) {
-                    positive = digit == '+'
-                } else {
-                    back()
-                    break@loop
+            char == '_' -> {
+                checkNotOnlyZero()
+                continue@loop
+            }
+            char.isWhitespace() -> break@loop
+            else -> {
+                when (val charVal = parseDigit(char, radix)) {
+                    null -> {
+                        back()
+                        break@loop
+                    }
+                    else -> {
+                        checkNotOnlyZero()
+                        hadDigit = true
+                        sumValue = sumValue * radix + charVal
+                    }
                 }
             }
-            digit.isDigit() -> {
-                hadDigit = true
-                value = value * 10 + (digit - '0')
-            }
-            digit.isWhitespace() -> break@loop
-            digit != '_' -> {
-                back()
-                break@loop
-            }
         }
-        first = false
     }
 
     if (!hadDigit) {
         failLex("Integer literal expected")
     }
 
-    return if (positive) value else -value
+    return if (positive) sumValue else -sumValue
 }
 
 internal fun SourceStream.parseAnyString(): StringParseResult
