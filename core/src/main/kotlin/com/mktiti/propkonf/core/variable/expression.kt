@@ -217,25 +217,71 @@ internal class ExpressionList(
 
 }
 
+private enum class TokenType {
+    VALUE, OPERATION
+}
+
 internal fun BackingIterator<ConcreteToken>.parseScope(): ValueExpression {
     val levelValues = LinkedList<ValueExpression>()
     val levelOps = LinkedList<OperatorExpr>()
 
+    var lastTokenType: TokenType? = null
+
+    fun addValue(valueExpr: ValueExpression) {
+        levelValues += valueExpr
+        lastTokenType = TokenType.VALUE
+    }
+
+    fun addOperation(operationExpr: OperatorExpr) {
+        levelOps += operationExpr
+        lastTokenType = TokenType.OPERATION
+    }
+
+    fun onMaybeUnary(token: OperatorExpr, isMinus: Boolean) {
+        if (lastTokenType != TokenType.VALUE) {
+            val originalVal = when (val next = safeNext() ?: throw ExpressionEvalException("Expression ended unexpectedly")) {
+                is ValueExpression -> next
+                is OpenParen -> parseScope()
+                else -> throw ExpressionEvalException("Illegal expression syntax: two operations after each other")
+            }
+
+            val newVal = if (isMinus) {
+                Mult.calc(intExpr(-1), originalVal)
+            } else {
+                originalVal
+            }
+
+            addValue(newVal)
+        } else {
+            addOperation(token)
+        }
+    }
+
     loop@while (hasNext()) {
         when (val token = next()) {
             is OpenParen -> {
-                levelValues += parseScope()
+                addValue(parseScope())
             }
             is CloseParen -> {
                 break@loop
             }
             is ValueExpression -> {
-                levelValues += token
+                addValue(token)
+            }
+            is Plus -> {
+                onMaybeUnary(token, false)
+            }
+            is Minus -> {
+                onMaybeUnary(token, true)
             }
             is OperatorExpr -> {
-                levelOps += token
+                addOperation(token)
             }
         }
+    }
+
+    if (lastTokenType != TokenType.VALUE) {
+        throw ExpressionEvalException("Expression ended unexpectedly")
     }
 
     val lastVal = levelValues.removeLast()

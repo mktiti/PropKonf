@@ -38,6 +38,18 @@ fun stringTraverser(array: String): SourceStream
 
 typealias SourceStream = BackingIterator<Char>
 
+internal fun SourceStream.jumpIfEq(value: String): Boolean {
+    value.forEachIndexed { i, char ->
+        val next = safeNext()
+        if (next != char) {
+            backN(if (next == null) i else (i + 1))
+            return false
+        }
+    }
+
+    return true
+}
+
 class BackingIterator<T>(private val store: TraverserStore<T>) {
 
     private var index = 0
@@ -58,7 +70,11 @@ class BackingIterator<T>(private val store: TraverserStore<T>) {
     fun peek(): T = if (hasNext()) store[index] else throw IllegalStateException("Traverser is finished")
 
     fun back() {
-        index = max(0, index - 1)
+        backN(1)
+    }
+
+    fun backN(times: Int) {
+        index = max(0, index - times)
     }
 
     fun reset() {

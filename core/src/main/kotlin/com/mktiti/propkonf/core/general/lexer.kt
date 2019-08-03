@@ -59,6 +59,7 @@ internal fun SourceStream.parseInt(): Int {
                 if (first) {
                     positive = digit == '+'
                 } else {
+                    back()
                     break@loop
                 }
             }
@@ -83,7 +84,7 @@ internal fun SourceStream.parseInt(): Int {
 }
 
 internal fun SourceStream.parseAnyString(): StringParseResult
-    = if (nTimes('"', 2)) {
+    = if (jumpIfEq("\"\"")) {
         parseRawString()
     } else {
         parseString()
@@ -167,27 +168,10 @@ internal fun SourceStream.parseString(): StringParseResult {
     return StringParseResult(producers)
 }
 
-internal fun <T> BackingIterator<T>.nTimes(field: T, count: Int = 3): Boolean =
-    if (count == 0) {
-        true
-    } else if (!hasNext()) {
-        false
-    } else if (next() == field) {
-        if (nTimes(field, count - 1)) {
-            true
-        } else {
-            back()
-            false
-        }
-    } else {
-        back()
-        false
-    }
-
 internal fun SourceStream.parseRawString(): StringParseResult {
     val builder = StringBuilder()
 
-    while (!nTimes('"')) {
+    while (!jumpIfEq("\"\"\"")) {
         builder.append(next())
     }
 

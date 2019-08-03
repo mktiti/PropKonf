@@ -17,9 +17,8 @@ fun main() {
     }
 }
 
-internal fun calculateExpression(expression: String): ValueExpression? {
-    return stringTraverser(expression).exprTokenize()?.eval(VarContextStack())
-            ?: return null
+internal fun calculateExpression(expression: String, rootContext: VarContextStack = VarContextStack()): ValueExpression? {
+    return stringTraverser(expression).exprTokenize()?.eval(rootContext)
 }
 
 internal fun SourceStream.exprTokenize(): GeneralDependantToken? =
@@ -37,15 +36,8 @@ internal fun SourceStream.exprTokenize(): GeneralDependantToken? =
                     '*' -> Mult
                     '/' -> Div
                     '%' -> Mod
-
-                    '+', '-' -> when {
-                        peek().isDigit() -> {
-                            back()
-                            intExpr(parseInt())
-                        }
-                        next == '+' -> Plus
-                        else -> Minus
-                    }
+                    '+' -> Plus
+                    '-' -> Minus
 
                     '<' -> if (safePeek() == '=') {
                         next()
