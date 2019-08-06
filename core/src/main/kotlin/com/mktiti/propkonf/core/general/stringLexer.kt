@@ -5,28 +5,20 @@ import com.mktiti.propkonf.core.variable.VarDependentToken
 import com.mktiti.propkonf.core.variable.exprTokenize
 import java.util.*
 
-internal fun SourceStream.parseAnyString(): StringParseResult? {
-    return when {
-        jumpIfEq("|\"\"\"") -> StringParseResult(parseRawString().trimMargin("|"))
-        jumpIfEq("\"\"\"") -> StringParseResult(parseRawString())
-        jumpIfEq("\"") -> parseString()
-        else -> null
-    }
+internal fun SourceStream.parseAnyString(): StringParseResult? = when {
+    jumpIfEq("|\"\"\"") -> ConstStringResult(parseRawString().trimMargin("|"))
+    jumpIfEq("\"\"\"") -> ConstStringResult(parseRawString())
+    jumpIfEq("x\"") -> ConstStringResult(parseUninterpolated())
+    jumpIfEq("\"") -> parseInterpolated()
+    else -> null
 }
 
-internal class StringParseResult(val parts: List<Either<out String, out VarDependentToken>>) {
+internal sealed class StringParseResult {
+    abstract val parts: List<Either<out String, out VarDependentToken>>
 
-    constructor(value: String) : this(listOf(Left(value)))
+    abstract fun getIfConstant(): String?
 
-    fun getIfConstant(): String? {
-        return when (parts.size) {
-            0 -> ""
-            1 -> (parts.first() as? Left)?.value
-            else -> null
-        }
-    }
-
-    fun <SR, VR> onResult(
+    open fun <SR, VR> onResult(
             onConstant: (String) -> SR,
             onVar: (InterpolatedStrDepToken) -> VR
     ): Either<SR, VR> {
@@ -37,10 +29,61 @@ internal class StringParseResult(val parts: List<Either<out String, out VarDepen
             Left(onConstant(constVal))
         }
     }
-
 }
 
-internal fun SourceStream.parseString(): StringParseResult {
+internal class ConstStringResult(private val value: String) : StringParseResult() {
+    override val parts: List<Either<out String, out VarDependentToken>> by lazy { listOf(Left<String, VarDependentToken>(value)) }
+
+    override fun getIfConstant(): String = value
+
+    override fun <SR, VR> onResult(onConstant: (String) -> SR, onVar: (InterpolatedStrDepToken) -> VR): Either<SR, VR>
+            = Left(onConstant(value))
+}
+
+internal class InterpolatedStringResult(
+        override val parts: List<Either<out String, out VarDependentToken>>
+) : StringParseResult() {
+
+    override fun getIfConstant(): String? {
+        return when (parts.size) {
+            0 -> ""
+            1 -> (parts.first() as? Left)?.value
+            else -> null
+        }
+    }
+}
+
+private fun SourceStream.parseStringInto(builder: StringBuilder, interpolator: SourceStream.() -> Unit) = with(builder) {
+    loop@while (true) {
+        when (val char = next()) {
+            '\n' -> failLex("Single string literal not closed (newline character before closing \")")
+            '"' -> break@loop
+            '\\' -> {
+                when (val special = next()) {
+                    '\\' -> append('\\')
+                    't' -> append('\t')
+                    'b' -> append('\b')
+                    'r' -> append('\r')
+                    '\'' -> append('\'')
+                    'n' -> append('\n')
+                    '"' -> append('\"')
+                    '$' -> append('\$')
+                    else -> failLex("Illegal escaped character '$special', use '\\\\' to write '\\'")
+                }
+            }
+            '$' -> interpolator()
+            else -> append(char)
+        }
+    }
+}
+
+internal fun SourceStream.parseUninterpolated(): String = StringBuilder().apply {
+    parseStringInto(this) {
+        append('$')
+    }
+}.toString()
+
+internal fun SourceStream.parseInterpolated(): StringParseResult {
     val builder = StringBuilder()
     val producers = LinkedList<Either<out String, out VarDependentToken>>()
 
@@ -52,42 +95,27 @@ internal fun SourceStream.parseString(): StringParseResult {
         }
     }
 
-    loop@while (true) {
-        when (val char = next()) {
-            '\n' -> failLex("Single string literal not closed (newline character before closing \")")
-            '"' -> break@loop
-            '\\' -> {
-                when (val special = next()) {
-                    '\\' -> builder.append('\\')
-                    't' -> builder.append('\t')
-                    'b' -> builder.append('\b')
-                    'r' -> builder.append('\r')
-                    '\'' -> builder.append('\'')
-                    'n' -> builder.append('\n')
-                    '"' -> builder.append('\"')
-                    '$' -> builder.append('\$')
-                    else -> failLex("Illegal escaped character '$special', use '\\\\' to write '\\'")
-                }
-            }
-            '$' -> {
-                if (next() != '{') {
-                    failLex("In interpolated string $ must be followed by {expression}, to write '$', use '\\$'")
-                }
-
-                builderToRes()
-
-                val expr = exprTokenize() ?: failLex("Failed to parse expression")
-                producers += Right(expr)
-            }
-            else -> builder.append(char)
+    parseStringInto(builder) {
+        if (next() != '{') {
+            failLex("In interpolated string $ must be followed by {expression}, to write '$', use '\\$'")
         }
-    }
-    builderToRes()
-    if (producers.isEmpty()) {
-        producers += Left("")
+
+        builderToRes()
+
+        val expr = exprTokenize() ?: failLex("Failed to parse expression")
+        producers += Right(expr)
     }
 
-    return StringParseResult(producers)
+    builderToRes()
+
+    return when (producers.size) {
+        0 -> ConstStringResult("")
+        1 -> when (val only = producers.first) {
+            is Left -> ConstStringResult(only.value)
+            is Right -> InterpolatedStringResult(producers)
+        }
+        else -> InterpolatedStringResult(producers)
+    }
 }
 
 internal fun SourceStream.parseRawString(): String = StringBuilder().apply {

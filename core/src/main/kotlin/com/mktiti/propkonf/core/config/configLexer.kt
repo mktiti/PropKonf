@@ -102,10 +102,6 @@ internal fun SourceStream.tokenize(): List<Token>? =
                     '{' -> BlockStart
                     '}' -> BlockEnd
                     '=' -> Assign
-                    '"' -> parseAnyString().onResult(
-                            onConstant = { VarLiteral(StringVal(it)) },
-                            onVar = { VarExpression(it) }
-                    ).value()
                     '$' -> {
                         if (peek() == '{') {
                             next()
@@ -138,10 +134,15 @@ internal fun SourceStream.tokenize(): List<Token>? =
                     }
                     else -> {
                         back()
+
                         if (next.isDigit() || next == '+' || next == '-') {
                             VarLiteral(IntVal(parseInt()))
                         } else {
-                            when (val name = parseName()) {
+
+                            parseAnyString()?.onResult(
+                                    onConstant = { VarLiteral(StringVal(it)) },
+                                    onVar = { VarExpression(it) }
+                            )?.value() ?: when (val name = parseName()) {
                                 "true" -> VarLiteral(TrueVal)
                                 "false" -> VarLiteral(FalseVal)
                                 else -> NameDef(name)

@@ -72,13 +72,12 @@ internal fun SourceStream.exprTokenize(): GeneralDependantToken? =
                     '.' -> OnTrue
                     ':' -> OnElse
 
-                    '"' -> parseAnyString().onResult(::strExpr) { it }.value()
-
                     else -> {
                         back()
                         if (next.isDigit()) {
                             intExpr(parseInt())
                         } else {
+                            parseAnyString()?.onResult(::strExpr) { it }?.value() ?:
                             when (val name = parseName()) {
                                 "true" -> ValueExpression(TrueVal)
                                 "false" -> ValueExpression(FalseVal)
