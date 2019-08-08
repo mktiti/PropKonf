@@ -4,7 +4,10 @@ sealed class PropValue<T>(internal val value: T) {
     override fun toString() = value.toString()
 }
 
-class StringVal(value: String) : PropValue<String>(value)
+class StringVal(value: String) : PropValue<String>(value) {
+    override fun toString() = "\"$value\""
+}
+
 class IntVal(value: Int) : PropValue<Int>(value)
 
 sealed class BoolVal(value: Boolean) : PropValue<Boolean>(value)

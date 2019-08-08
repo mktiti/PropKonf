@@ -10,10 +10,10 @@ internal fun ValueExpression.toInt(): Int = when (val prop = this.value) {
     is FalseVal -> 0
     is StringVal -> {
         val value = prop.value
-        value.toIntOrNull() ?: when {
-            value == "true" -> 1
-            value == "false" -> 0
-            value.isBlank() -> 0
+        value.toIntOrNull() ?: when (value) {
+            "true" -> 1
+            "false" -> 0
+            "" -> 0
             else -> 1
         }
     }
@@ -149,19 +149,26 @@ internal object LessEq : IntOperatorExpr(4, { a, b -> boolExpr(a <= b) })
 internal object MoreEq : IntOperatorExpr(4, { a, b -> boolExpr(a >= b) })
 
 private fun eq(leftVal: ValueExpression, rightVal: ValueExpression): Boolean =
+    leftVal.value.toString() == rightVal.value.toString()
+    /*
     if (leftVal.value is StringVal && rightVal.value is StringVal) {
         leftVal.value.value == rightVal.value.value
     } else {
         leftVal.toInt() == rightVal.toInt()
     }
+     */
 
 internal object Eq : OperatorExpr(3) {
     override fun calc(leftVal: ValueExpression, rightVal: ValueExpression) =
             boolExpr(eq(leftVal, rightVal))
+
+    override fun toString() = "=="
 }
 internal object NotEq : OperatorExpr(3) {
     override fun calc(leftVal: ValueExpression, rightVal: ValueExpression) =
             boolExpr(!eq(leftVal, rightVal))
+
+    override fun toString() = "!="
 }
 
 internal object And : BoolOperatorExpr(2, { a, b -> boolExpr(a && b) })
