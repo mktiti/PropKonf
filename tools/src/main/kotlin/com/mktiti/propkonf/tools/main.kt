@@ -16,6 +16,7 @@ import hu.mktiti.propkonf.tools.generated.ProjectInfo
 import java.io.FileOutputStream
 import java.io.PrintStream
 import java.nio.file.Paths
+import kotlin.system.exitProcess
 
 enum class PrintFormat {
     PRETTY, ONE_LINE, FLAT
@@ -83,17 +84,12 @@ fun main(args: Array<String>) = mainBody {
             }
         }
 
-        val block = if (sourcePath == "-") {
+        val block = (if (sourcePath == "-") {
             val content = generateSequence(::readLine).joinToString("\n")
             fullParse(content, customVars)
         } else {
             fullParse(Paths.get(sourcePath), customVars)
-        }
-
-        if (block == null) {
-            System.exit(2)
-            return@mainBody
-        }
+        }) ?: exitProcess(2)
 
         val target: ((PrintStream) -> Unit) -> Unit = if (targetPath == "-") {
             {
