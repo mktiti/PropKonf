@@ -1,6 +1,8 @@
 package com.mktiti.propkonf.core.variable
 
-import com.mktiti.propkonf.core.general.PropValue
+import com.mktiti.propkonf.core.general.*
+import com.mktiti.propkonf.core.general.FalseVal
+import com.mktiti.propkonf.core.general.TrueVal
 
 open class VarContextStack(
         private val parent: VarContextStack? = null
@@ -20,4 +22,28 @@ class MutableVarContextStack(
         variables[name] = value
     }
 
+}
+
+class VarContextBuilder(parent: VarContextStack? = null) {
+    private val context = MutableVarContextStack(parent)
+
+    fun int(key: String, value: Int) {
+        context[key] = IntVal(value)
+    }
+
+    fun string(key: String, value: String) {
+        context[key] = StringVal(value)
+    }
+
+    fun bool(key: String, value: Boolean) {
+        context[key] = if (value) TrueVal else FalseVal
+    }
+
+    fun view(): VarContextStack = context
+
+}
+
+fun buildVarContext(parent: VarContextStack? = null, builder: VarContextBuilder.() -> Unit): VarContextStack = with(VarContextBuilder(parent)) {
+    builder()
+    view()
 }

@@ -40,8 +40,8 @@ internal class SimpleDependentProperty(
 
 class DependentBlock(
         name: String,
-        val variables: List<DependentProperty>,
-        val varContext: DependentVarContextStack
+        private val variables: List<DependentProperty>,
+        private val varContext: DependentVarContextStack
 ) : DependentProperty(name) {
 
     override operator fun get(parts: List<String>) = if (parts.isEmpty()) {
@@ -65,7 +65,7 @@ class DependentBlock(
 open class DependentVarContextStack(
         private val parent: DependentVarContextStack? = null
 ) {
-    internal val variables: MutableList<Pair<String, Either<PropValue<*>, VarDependentToken>>> = LinkedList()
+    private val variables: MutableList<Pair<String, Either<PropValue<*>, VarDependentToken>>> = LinkedList()
 
     internal operator fun set(name: String, value: Either<PropValue<*>, VarDependentToken>) {
         variables += name to value

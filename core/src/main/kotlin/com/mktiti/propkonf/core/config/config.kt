@@ -1,7 +1,6 @@
 package com.mktiti.propkonf.core.config
 
 import com.mktiti.propkonf.core.general.PropValue
-import java.lang.IllegalArgumentException
 
 sealed class Property(val name: String) {
     abstract operator fun get(parts: List<String>): PropValue<*>?

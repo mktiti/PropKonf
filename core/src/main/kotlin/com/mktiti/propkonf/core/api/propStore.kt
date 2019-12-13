@@ -2,8 +2,6 @@ package com.mktiti.propkonf.core.api
 
 import com.mktiti.propkonf.core.config.Block
 import com.mktiti.propkonf.core.general.*
-import com.mktiti.propkonf.core.general.FalseVal
-import com.mktiti.propkonf.core.general.TrueVal
 
 interface PropStore {
 

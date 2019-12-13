@@ -21,10 +21,10 @@ class Server(
 
     init {
         println("""Running server mock
-            |==== Web port: $webPort
-            |==== Console port: $consolePort
-            |==== Log port: $logPort
-        """.trimIndent())
+            |  ==== Web port: $webPort
+            |  ==== Console port: $consolePort
+            |  ==== Log port: $logPort
+        """.trimMargin())
     }
 
     fun enableCache(location: String, strategy: CacheStrategy) {

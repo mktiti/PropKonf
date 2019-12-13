@@ -1,10 +1,21 @@
 import com.mktiti.propkonf.core.api.fileConfig
+import com.mktiti.propkonf.core.variable.buildVarContext
+import java.util.*
 
 // See demo.conf in resources (demo/src/main/resources/demo.conf)
 // Try running with PORT environment variable set to an integer
 fun main() {
 
-    val config = fileConfig(object {}.javaClass.getResource("/demo.conf").path, passEnvVars = true)
+    val externalVars = buildVarContext {
+        if (Random().nextBoolean()) {
+            // See cache location change on rerun ...probably
+            string("external-loc", "random/path")
+        }
+    }
+
+    val demoPath = object {}.javaClass.getResource("/demo.conf").path
+
+    val config = fileConfig(demoPath, externalVars, passEnvVars = true)
     try {
         launchScript(script = config["script.init"])
         val server = Server(
@@ -15,7 +26,7 @@ fun main() {
 
         println(config["server.needs-root-message"])
 
-        val serverConf = config.view("server.cache") // Who likes typing
+        val serverConf = config.view("server.cache") // Who likes repeating themselves
         if (serverConf.boolOpt("enabled") == true) {
             server.enableCache(
                     location = serverConf["location"], // Same as config["server.cache.location"]
@@ -28,7 +39,7 @@ fun main() {
     }
 
     println("Some more demo")
-    println("==== x: ${config.int("demo.inner.useless.x")}")
-    println("==== b: ${config.bool("demo.inner.useless.b")}")
+    println("  ==== x: ${config.int("demo.inner.useless.x")}")
+    println("  ==== b: ${config.bool("demo.inner.useless.b")}")
 
 }
