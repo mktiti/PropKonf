@@ -25,7 +25,7 @@ fun main() {
             }
 
             if (path.isBlank()) break
-            val tokens = tokenize(Paths.get(path))
+            val tokens = safeTokenize(Paths.get(path))
             println(tokens)
             if (tokens != null) {
                 val dependentBlock = parse(tokens)
@@ -82,83 +82,87 @@ internal class VarLiteral<T>(internal val value: PropValue<T>) : Token() {
 }
 
 fun fullParse(path: Path, rootContext: VarContextStack? = null): Block? =
-        loadFile(path).tokenize()?.let { parse(it) }?.evaluate(VarContextStack(rootContext))
+        loadFile(path).safeTokenize()?.let { parse(it) }?.evaluate(VarContextStack(rootContext))
 
 fun fullParse(value: String, rootContext: VarContextStack? = null): Block? =
-        tokenize(value)?.let { parse(it) }?.evaluate(VarContextStack(rootContext))
+        safeTokenize(value)?.let { parse(it) }?.evaluate(VarContextStack(rootContext))
 
-internal fun tokenize(path: Path): List<Token>? = loadFile(path).tokenize()
+internal fun safeTokenize(path: Path): List<Token>? = loadFile(path).safeTokenize()
 
-internal fun tokenize(value: String): List<Token>? = stringTraverser(value).tokenize()
+internal fun safeTokenize(value: String): List<Token>? = stringTraverser(value).safeTokenize()
 
-internal fun SourceStream.tokenize(): List<Token>? =
-        try {
-            val list: MutableList<Token> = LinkedList()
+internal fun SourceStream.tokenize(): List<Token> {
+    val list: MutableList<Token> = LinkedList()
 
-            skipWhitespace()
-            while (hasNext()) {
-                val parsed: Token? = when (val next = next()) {
-                    '#' -> ValueComment
-                    '{' -> BlockStart
-                    '}' -> BlockEnd
-                    '=' -> Assign
-                    '$' -> {
-                        if (peek() == '{') {
-                            next()
-                            VarExpression(exprTokenize()
-                                    ?: failLex("Invalid expression"))
-                        } else {
-                            VarDef(parseName())
-                        }
-                    }
-                    '/' -> {
-                        when (safeNext()) {
-                            '/' -> {
-                                while (hasNext() && next() != '\n') {}
-                            }
-                            '*' -> {
-                                block@while (hasNext()) {
-                                    while (hasNext() && next() != '*') {}
-                                    when (safePeek()) {
-                                        '/' -> {
-                                            next()
-                                            break@block
-                                        }
-                                        null -> throw LexingException("Block comment ('/*') not closed ('*/' missing)")
-                                    }
-                                }
-                            }
-                            else -> throw LexingException("Unexpected '/' character ('//', '/*' are valid commenting)")
-                        }
-                        null
-                    }
-                    else -> {
-                        back()
-
-                        if (next.isDigit() || next == '+' || next == '-') {
-                            VarLiteral(IntVal(parseInt()))
-                        } else {
-
-                            parseAnyString()?.onResult(
-                                    onConstant = { VarLiteral(StringVal(it)) },
-                                    onVar = { VarExpression(it) }
-                            )?.value() ?: when (val name = parseName()) {
-                                "true" -> VarLiteral(TrueVal)
-                                "false" -> VarLiteral(FalseVal)
-                                else -> NameDef(name)
-                            }
-                        }
-                    }
+    skipWhitespace()
+    while (hasNext()) {
+        val parsed: Token? = when (val next = next()) {
+            '#' -> ValueComment
+            '{' -> BlockStart
+            '}' -> BlockEnd
+            '=' -> Assign
+            '$' -> {
+                if (peek() == '{') {
+                    next()
+                    VarExpression(exprTokenize()
+                            ?: failLex("Invalid expression"))
+                } else {
+                    VarDef(parseName())
                 }
-
-                if (parsed != null) {
-                    list += parsed
-                }
-
-                skipWhitespace()
             }
+            '/' -> {
+                when (safeNext()) {
+                    '/' -> {
+                        while (hasNext() && next() != '\n') {}
+                    }
+                    '*' -> {
+                        block@while (hasNext()) {
+                            while (hasNext() && next() != '*') {}
+                            when (safePeek()) {
+                                '/' -> {
+                                    next()
+                                    break@block
+                                }
+                                null -> throw LexingException("Block comment ('/*') not closed ('*/' missing)")
+                            }
+                        }
+                    }
+                    else -> throw LexingException("Unexpected '/' character ('//', '/*' are valid commenting)")
+                }
+                null
+            }
+            else -> {
+                back()
 
-            list
+                if (next.isDigit() || next == '+' || next == '-') {
+                    VarLiteral(IntVal(parseInt()))
+                } else {
+
+                    parseAnyString()?.onResult(
+                            onConstant = { VarLiteral(StringVal(it)) },
+                            onVar = { VarExpression(it) }
+                    )?.value() ?: when (val name = parseName()) {
+                        "true" -> VarLiteral(TrueVal)
+                        "false" -> VarLiteral(FalseVal)
+                        else -> NameDef(name)
+                    }
+                }
+            }
+        }
+
+        if (parsed != null) {
+            list += parsed
+        }
+
+        skipWhitespace()
+    }
+
+    return list
+}
+
+internal fun SourceStream.safeTokenize(): List<Token>? =
+        try {
+            tokenize()
         } catch (ise: IllegalStateException) {
             System.err.println("Input has ended unexpectedly")
             null

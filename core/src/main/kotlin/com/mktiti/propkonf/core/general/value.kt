@@ -5,7 +5,7 @@ sealed class PropValue<T>(internal val value: T) {
 }
 
 class StringVal(value: String) : PropValue<String>(value) {
-    override fun toString() = "\"$value\""
+    override fun toString() = value
 }
 
 class IntVal(value: Int) : PropValue<Int>(value)
