@@ -40,15 +40,15 @@ my-scope {
 }
 ```
 
-Simple expressions include math operations (`+`, `-`, `/`, `*`, `%`, ...), logic operations (`&&`, `!=`, ...)
-null-checking/mapping (`?:`, `. :`). These operations can be used inside `${...}` blocks, can reference literals of variables.
+Simple expressions include math operations (`+`, `-`, `/`, `*`, `%`, ...), logic operations (`&&`, `!=`, ...),
+null-checking/mapping (`?:`, `. :`). These operations can be used inside `${...}` blocks, can reference literals or variables.
 
 String literals support:
 
 - Normal strings (`"X: ${x}"` -> `X: 10`)
 - Strings without interpolation (`x"X: ${x}"` -> `X: ${x}`)
 - Multiline raw strings (`"""X: <<line break>> ${x}"""` -> `X: <<line break>> 10`)
-- Multiline raw trimmed strings (`|"""A: <<line break>>    |1"` -> `A:<<line break>>1`)
+- Multiline raw trimmed strings (`|"""A: <<line break>> <<whitespaces>> |1"` -> `A:<<line break>>1`)
 
 #### Project structure
 
@@ -117,4 +117,64 @@ demo {
     }
 }
 
+```
+
+Usage (with primitive mock):
+
+```
+fun main() {
+
+    val externalVars = buildVarContext {
+        if (Random().nextBoolean()) {
+            // See cache location change on rerun ...probably
+            string("external-loc", "random/path")
+        }
+    }
+
+    val demoPath = object {}.javaClass.getResource("/demo.conf").path
+
+    val config = fileConfig(demoPath, externalVars, passEnvVars = true)
+    try {
+        launchScript(script = config["script.init"])
+        val server = Server(
+                webPort = config.int("server.web-port"),
+                consolePort = config.int("server.console-port"),
+                logPort = config.intOpt("server.log-port") ?: 1000
+        )
+
+        println(config["server.needs-root-message"])
+
+        val serverConf = config.view("server.cache") // Who likes repeating themselves
+        if (serverConf.boolOpt("enabled") == true) {
+            server.enableCache(
+                    location = serverConf["location"], // Same as config["server.cache.location"]
+                    strategy = serverConf.get("strategy") { CacheStrategy.parse(it) }
+            )
+        }
+
+    } finally {
+        launchScript(script = config["script.stop"])
+    }
+
+    println("Some more demo")
+    println("  ==== x: ${config.int("demo.inner.useless.x")}")
+    println("  ==== b: ${config.bool("demo.inner.useless.b")}")
+
+}
+```
+
+Output (with PORT environment variable set to 9000):
+
+```
+Running script: ~/long/path/to/a/base/directory/start.sh
+Running server mock
+  ==== Web port: 9001
+  ==== Console port: 9002
+  ==== Log port: 9003
+Root account: not required
+Cache start @ /tmp/myapp/random/path/cache, strategy: LRU
+Running script: ~/long/path/to/a/base/directory/stop.sh
+Some more demo
+  ==== x: 6
+  ==== b: true
 ```
